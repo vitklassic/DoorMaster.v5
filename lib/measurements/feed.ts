@@ -1,3 +1,4 @@
+import { NOT_SPECIFIED } from './format';
 import type { Measurement } from './types';
 
 export type FeedItem = {
@@ -6,7 +7,10 @@ export type FeedItem = {
 };
 
 export function buildFeedItems(measurements: Measurement[]): FeedItem[] {
-  return measurements.map((measurement) => ({ key: measurement.id, measurement }));
+  return measurements.map((measurement) => ({
+    key: measurement.id,
+    measurement,
+  }));
 }
 
 export function filterFeedItems(items: FeedItem[], query: string): FeedItem[] {
