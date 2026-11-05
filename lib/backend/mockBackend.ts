@@ -156,11 +156,11 @@ export async function mockIsInviteCodeValid(code: string): Promise<boolean> {
   return Boolean(findValidInvite(readState(), code));
 }
 
-export async function mockListCompanyInstallers(tenant: Tenant): Promise<{ id: string; email: string }[]> {
+export async function mockListCompanyInstallers(tenant: Tenant): Promise<{ id: string; displayName: string }[]> {
   return readState()
     .users.filter((item) => item.companyId === tenant.companyId && item.role === 'installer')
-    .map((item) => ({ id: item.id, email: item.email }))
-    .sort((a, b) => a.email.localeCompare(b.email));
+    .map((item) => ({ id: item.id, displayName: item.email }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 export async function mockCreateMeasurement(tenant: Tenant, details: MeasurementDetails): Promise<Measurement> {

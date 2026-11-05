@@ -48,7 +48,7 @@ function renderOpeningHtml(opening: Opening, title: string, photoUrl: string | u
     <section class="opening">
       <div class="opening-info">
         <h3>${escapeHtml(title)}</h3>
-        <p>Этаж: ${escapeHtml(textOrNotSpecified(opening.floor))}</p>
+        ${opening.floor?.trim() ? `<p>Этаж: ${escapeHtml(opening.floor)}</p>` : ''}
         <p>Высота: ${millimetersOrNotSpecified(opening.height)} · Ширина: ${millimetersOrNotSpecified(opening.width)} · Толщина: ${millimetersOrNotSpecified(opening.thickness)}</p>
         <p>Открывание: ${escapeHtml(getSideLabel(opening.side))}</p>
         ${photo}
@@ -92,7 +92,7 @@ export function buildReportHtml(measurement: Measurement, photos: Record<string,
   <div class="summary">
     <p><strong>Адрес:</strong> ${escapeHtml(textOrNotSpecified(measurement.address))}</p>
     <p><strong>Заказчик:</strong> ${escapeHtml(textOrNotSpecified(measurement.clientName))}</p>
-    <p><strong>Этаж объекта:</strong> ${escapeHtml(textOrNotSpecified(measurement.floor))}</p>
+    ${measurement.floor.trim() ? `<p><strong>Этаж объекта:</strong> ${escapeHtml(measurement.floor)}</p>` : ''}
     <p><strong>Подъезд:</strong> ${escapeHtml(textOrNotSpecified(measurement.entrance))}, <strong>квартира:</strong> ${escapeHtml(textOrNotSpecified(measurement.apartment))}</p>
     <p><strong>Дата замера:</strong> ${formatDate(measurement.createdAt)}</p>
     <p><strong>Статус:</strong> ${escapeHtml(STATUS_LABELS[measurement.status])}</p>

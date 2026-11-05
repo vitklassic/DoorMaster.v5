@@ -27,11 +27,11 @@ export function InstallersSidebar({ installers, loading, error, horizontal }: Pr
         {installers.map((installer) => (
           <View key={installer.id} style={[styles.row, horizontal && styles.rowChip]}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{installer.email.charAt(0).toUpperCase()}</Text>
+              <Text style={styles.avatarText}>{installer.displayName.charAt(0).toUpperCase()}</Text>
             </View>
             <View style={styles.rowText}>
               <Text style={styles.email} numberOfLines={1}>
-                {installer.email}
+                {installer.displayName}
               </Text>
               <Text style={styles.role}>{ROLE_LABELS.installer}</Text>
             </View>

@@ -69,6 +69,18 @@ export function getSchemaElements(side: OpeningSide | null): SchemaElement[] {
   const door: SchemaElement[] = [];
   if (side === 'slide-outer') door.push({ kind: 'rect', x: 70, y: 78, width: 100, height: 8, role: 'door' });
   if (side === 'slide-inner') door.push({ kind: 'rect', x: 70, y: 94, width: 100, height: 8, role: 'door' });
+  if (side === 'slide-double-outer') {
+    door.push(
+      { kind: 'rect', x: 70, y: 78, width: 48, height: 8, role: 'door' },
+      { kind: 'rect', x: 122, y: 78, width: 48, height: 8, role: 'door' },
+    );
+  }
+  if (side === 'slide-double-inner') {
+    door.push(
+      { kind: 'rect', x: 70, y: 94, width: 48, height: 8, role: 'door' },
+      { kind: 'rect', x: 122, y: 94, width: 48, height: 8, role: 'door' },
+    );
+  }
   if (side) door.push(...getSwingElements(side));
 
   const caption: SchemaElement = {

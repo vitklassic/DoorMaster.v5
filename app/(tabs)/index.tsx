@@ -134,7 +134,7 @@ export default function NewMeasurementScreen() {
               label="Измерить следующий проем"
               onPress={() => setStage({ kind: 'opening', measurementId: stage.measurementId, key: Date.now() })}
             />
-            <AppButton label="Завершить замер" variant="secondary" onPress={() => setStage({ kind: 'home' })} />
+            <AppButton label="Сохранить и выйти" variant="secondary" onPress={() => setStage({ kind: 'home' })} />
           </View>
         </View>
       ) : null}

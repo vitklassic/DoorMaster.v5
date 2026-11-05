@@ -19,8 +19,11 @@ export const OPENING_SIDE_OPTIONS = [
   { id: 'pull-right', label: 'На себя вправо' },
   { id: 'push-left', label: 'От себя влево' },
   { id: 'push-right', label: 'От себя вправо' },
+  { id: 'portal', label: 'Портал (без двери)' },
   { id: 'slide-outer', label: 'Раздвижные по наружной стене' },
   { id: 'slide-inner', label: 'Раздвижные по внутренней стене' },
+  { id: 'slide-double-outer', label: 'Двойные раздвижные снаружи проёма' },
+  { id: 'slide-double-inner', label: 'Двойные раздвижные внутри проёма' },
 ] as const;
 
 export type OpeningSide = (typeof OPENING_SIDE_OPTIONS)[number]['id'];

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Check, Eye, EyeOff } from 'lucide-react-native';
 import { colors, radius } from '@/constants/theme';
 import { webInputReset } from '@/constants/inputReset';
 
@@ -36,6 +37,7 @@ export function FormField({
   onConfirm,
   confirmDisabled = false,
 }: Props) {
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const borderColor = error ? colors.error : warning ? colors.warning : colors.border;
 
   return (
@@ -51,14 +53,27 @@ export function FormField({
           keyboardType={keyboardType}
           autoFocus={autoFocus}
           multiline={multiline}
-          secureTextEntry={secureTextEntry}
+          secureTextEntry={secureTextEntry && !passwordVisible}
           autoCapitalize={autoCapitalize}
           textAlignVertical={multiline ? 'top' : 'center'}
           onSubmitEditing={onConfirm && !confirmDisabled ? onConfirm : undefined}
           returnKeyType={onConfirm ? 'done' : undefined}
         />
         {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
-        {onConfirm ? (
+        {secureTextEntry ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={passwordVisible ? 'Скрыть пароль' : 'Показать пароль'}
+            onPress={() => setPasswordVisible((visible) => !visible)}
+            hitSlop={12}
+            style={({ pressed }) => [styles.passwordButton, pressed && styles.passwordButtonPressed]}>
+            {passwordVisible ? (
+              <EyeOff size={20} color={colors.textSecondary} strokeWidth={2} />
+            ) : (
+              <Eye size={20} color={colors.textSecondary} strokeWidth={2} />
+            )}
+          </Pressable>
+        ) : onConfirm ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Подтвердить"
@@ -121,6 +136,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: colors.textSecondary,
+  },
+  passwordButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+  },
+  passwordButtonPressed: {
+    backgroundColor: colors.primarySoft,
   },
   confirmButton: {
     width: 24,

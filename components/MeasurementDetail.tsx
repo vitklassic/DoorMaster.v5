@@ -66,7 +66,9 @@ export function MeasurementDetail({
       <View style={styles.summary}>
         <Text style={styles.address}>{textOrNotSpecified(measurement.address)}</Text>
         <Text style={styles.summaryText}>Заказчик: {textOrNotSpecified(measurement.clientName)}</Text>
-        <Text style={styles.summaryText}>Этаж объекта: {textOrNotSpecified(measurement.floor)}</Text>
+        {measurement.floor.trim() ? (
+          <Text style={styles.summaryText}>Этаж объекта: {measurement.floor}</Text>
+        ) : null}
         <Text style={styles.summaryText}>
           Подъезд {textOrNotSpecified(measurement.entrance)}, квартира {textOrNotSpecified(measurement.apartment)}
         </Text>
@@ -165,7 +167,7 @@ function OpeningCard({
           </Pressable>
         ) : null}
       </View>
-      <Text style={styles.openingMeta}>Этаж: {textOrNotSpecified(opening.floor)}</Text>
+      {opening.floor?.trim() ? <Text style={styles.openingMeta}>Этаж: {opening.floor}</Text> : null}
       <Text style={styles.openingMeta}>
         Высота: {millimetersOrNotSpecified(opening.height)} · Ширина: {millimetersOrNotSpecified(opening.width)} · Толщина: {millimetersOrNotSpecified(opening.thickness)}
       </Text>
