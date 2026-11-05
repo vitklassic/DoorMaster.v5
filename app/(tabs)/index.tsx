@@ -43,14 +43,16 @@ export default function NewMeasurementScreen() {
     const openingId = await addOpening(measurementId, { ...opening, photoDataUrl: null });
     if (!openingId) return;
     if (photo) {
-      if (tenant && isSupabaseConfigured) {
+      // На web — blob, на native — uri файла (C17)
+      const file = photo.blob ?? photo.uri;
+      if (tenant && isSupabaseConfigured && file) {
         try {
-          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, photo.blob);
+          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, file);
           await updateOpening(openingId, { ...opening, photoDataUrl: path });
         } catch (error) {
           console.error('Не удалось загрузить фото проема', error);
         }
-      } else {
+      } else if (photo.blob) {
         // Mock-режим (web без env): храним data URL в localStorage
         const dataUrl = await blobToDataUrl(photo.blob);
         await updateOpening(openingId, { ...opening, photoDataUrl: dataUrl });

@@ -30,8 +30,11 @@ export function PhotoStep({ existingPhoto, photo, onChange, onRemoveExisting }: 
         revokePreview(photo?.previewUrl ?? null);
         onChange(next);
       }
-    } catch {
-      setError('Не удалось прикрепить фото. Попробуйте еще раз.');
+    } catch (err) {
+      // Диагностика: показываем реальную причину, а не общую фразу
+      const reason = err instanceof Error ? err.message : String(err);
+      console.error('pickPhoto failed', err);
+      setError(`Не удалось прикрепить фото: ${reason}`);
     } finally {
       setPicking(false);
     }

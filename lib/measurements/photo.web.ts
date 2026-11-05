@@ -42,7 +42,7 @@ export function pickPhoto(source: PhotoSource): Promise<PickedPhoto | null> {
         return;
       }
       compressImage(file)
-        .then((blob) => resolve({ blob, previewUrl: URL.createObjectURL(blob) }))
+        .then((blob) => resolve({ blob, uri: null, previewUrl: URL.createObjectURL(blob) }))
         .catch(reject);
     };
     input.oncancel = () => resolve(null);

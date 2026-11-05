@@ -14,6 +14,7 @@ export async function createInviteCode(tenant: Tenant): Promise<string> {
 export async function isInviteCodeValid(code: string): Promise<boolean> {
   if (!supabase) return mock.mockIsInviteCodeValid(code);
   const { data, error } = await supabase.rpc('is_valid_invite_code', { p_code: code });
-  if (error || typeof data !== 'boolean') throw new Error(GENERIC_INVITE_ERROR);
-  return data;
+  if (error) throw new Error(GENERIC_INVITE_ERROR);
+  // The RPC returns the company UUID for a valid code and null otherwise.
+  return typeof data === 'string' && data.length > 0;
 }

@@ -2,10 +2,12 @@ import { Platform } from 'react-native';
 
 export type PhotoSource = 'camera' | 'library';
 
-// blob — сжатое jpeg-фото для загрузки в Storage;
+// blob — сжатое jpeg-фото для загрузки в Storage (только web);
+// uri — путь к файлу на устройстве (native: загрузка через expo-file-system, C17);
 // previewUrl — uri для мгновенного превью (object URL на web, asset.uri на native)
 export type PickedPhoto = {
-  blob: Blob;
+  blob: Blob | null;
+  uri: string | null;
   previewUrl: string;
 };
 

@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { colors, radius, spacing } from '@/constants/theme';
 import { usePhotoUrl } from '@/lib/backend/photoStorage';
 import { formatDate, getRoomLabels, getSideLabel, millimetersOrNotSpecified, textOrNotSpecified } from '@/lib/measurements/format';
-import { shareReport } from '@/lib/measurements/shareReport';
+import { previewReport, shareReport } from '@/lib/measurements/shareReport';
 import { getAllowedTransitions, getTransitionLabel } from '@/lib/measurements/statusTransitions';
 import type { Measurement, MeasurementStatus, Opening } from '@/lib/measurements/types';
 
@@ -39,17 +39,19 @@ export function MeasurementDetail({
   // Редактирование доступно только в работе: done/archived закрыты для правок
   const editable = measurement.status === 'draft' || measurement.status === 'active';
 
-  async function handleShare() {
+  async function handleReport(action: 'preview' | 'share') {
     setExportMessage(null);
     try {
-      await shareReport(measurement);
-    } catch {
+      await (action === 'preview' ? previewReport(measurement) : shareReport(measurement));
+    } catch (error) {
+      console.error('Не удалось подготовить PDF', error);
+      const detail = error instanceof Error ? error.message : String(error);
       setExportMessage({
         kind: 'error',
         text:
           Platform.OS === 'web'
             ? 'Браузер заблокировал окно отчета. Разрешите всплывающие окна и повторите.'
-            : 'Не удалось подготовить PDF для отправки. Попробуйте еще раз.',
+            : `Не удалось подготовить PDF. ${detail}`,
       });
     }
   }
@@ -90,7 +92,14 @@ export function MeasurementDetail({
       </View>
 
       <View style={styles.actions}>
-        <AppButton label={Platform.OS === 'web' ? 'Сохранить в PDF' : 'Отправить PDF'} onPress={() => void handleShare()} />
+        {Platform.OS !== 'web' ? (
+          <AppButton label="Просмотреть / сохранить PDF" onPress={() => void handleReport('preview')} />
+        ) : null}
+        <AppButton
+          label={Platform.OS === 'web' ? 'Сохранить в PDF' : 'Отправить PDF'}
+          variant={Platform.OS === 'web' ? 'primary' : 'secondary'}
+          onPress={() => void handleReport('share')}
+        />
         {editable ? <AppButton label="Редактировать данные объекта" variant="secondary" onPress={onEditDetails} /> : null}
         {exportMessage ? (
           <Text style={exportMessage.kind === 'error' ? styles.errorText : styles.successText}>{exportMessage.text}</Text>

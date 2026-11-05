@@ -3,6 +3,7 @@ import type { Measurement } from './types';
 
 type ShareReportModule = {
   shareReport: (measurement: Measurement) => Promise<void>;
+  previewReport: (measurement: Measurement) => Promise<void>;
 };
 
 // Диспетчер платформенных реализаций: на web Metro резолвит сразу
@@ -15,4 +16,8 @@ function loadModule(): Promise<ShareReportModule> {
 
 export async function shareReport(measurement: Measurement): Promise<void> {
   return (await loadModule()).shareReport(measurement);
+}
+
+export async function previewReport(measurement: Measurement): Promise<void> {
+  return (await loadModule()).previewReport(measurement);
 }

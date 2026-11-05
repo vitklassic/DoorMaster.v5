@@ -24,6 +24,10 @@ async function collectPhotos(measurement: Measurement): Promise<Record<string, s
   return photos;
 }
 
+export async function previewReport(measurement: Measurement): Promise<void> {
+  return shareReport(measurement);
+}
+
 export async function shareReport(measurement: Measurement): Promise<void> {
   // Окно открываем синхронно до await, чтобы браузер не заблокировал всплывающее окно
   const reportWindow = window.open('', '_blank');

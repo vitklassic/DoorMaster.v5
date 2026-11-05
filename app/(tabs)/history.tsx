@@ -43,14 +43,16 @@ export default function HistoryScreen() {
     const openingId = await addOpening(measurementId, { ...opening, photoDataUrl: null });
     if (!openingId) return;
     if (photo) {
-      if (tenant && isSupabaseConfigured) {
+      // На web — blob, на native — uri файла (C17)
+      const file = photo.blob ?? photo.uri;
+      if (tenant && isSupabaseConfigured && file) {
         try {
-          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, photo.blob);
+          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, file);
           await updateOpening(openingId, { ...opening, photoDataUrl: path });
         } catch (error) {
           console.error('Не удалось загрузить фото проема', error);
         }
-      } else {
+      } else if (photo.blob) {
         // Mock-режим (web без env): храним data URL в localStorage
         const dataUrl = await blobToDataUrl(photo.blob);
         await updateOpening(openingId, { ...opening, photoDataUrl: dataUrl });
@@ -66,9 +68,11 @@ export default function HistoryScreen() {
     photo: PickedPhoto | null
   ) {
     if (photo) {
-      if (tenant && isSupabaseConfigured) {
+      // На web — blob, на native — uri файла (C17)
+      const file = photo.blob ?? photo.uri;
+      if (tenant && isSupabaseConfigured && file) {
         try {
-          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, photo.blob);
+          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, file);
           const saved = await updateOpening(openingId, { ...opening, photoDataUrl: path });
           if (saved) setEditing(null);
         } catch (error) {
@@ -77,7 +81,7 @@ export default function HistoryScreen() {
         return;
       }
       // Mock-режим: новое фото как data URL
-      const dataUrl = await blobToDataUrl(photo.blob);
+      const dataUrl = await blobToDataUrl(photo.blob!);
       const savedWithPhoto = await updateOpening(openingId, { ...opening, photoDataUrl: dataUrl });
       if (savedWithPhoto) setEditing(null);
       return;

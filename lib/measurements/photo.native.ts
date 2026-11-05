@@ -11,9 +11,9 @@ export async function pickPhoto(source: PhotoSource): Promise<PickedPhoto | null
   const asset = result.canceled ? null : (result.assets?.[0] ?? null);
   if (!asset) return null;
 
-  const response = await fetch(asset.uri);
-  const blob = await response.blob();
-  return { blob, previewUrl: asset.uri };
+  // На native (Hermes) Blob из байтов не поддерживается — отдаём uri файла,
+  // загрузка идёт напрямую с диска через expo-file-system (C17)
+  return { blob: null, uri: asset.uri, previewUrl: asset.uri };
 }
 
 // На native превью — это asset.uri, освобождать нечего
