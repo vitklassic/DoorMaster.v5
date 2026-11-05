@@ -8,9 +8,14 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { OpeningWizard } from '@/components/opening/OpeningWizard';
 import { colors, radius, spacing } from '@/constants/theme';
 import { webInputReset } from '@/constants/inputReset';
+import { useAuth } from '@/lib/auth/AuthContext';
+import type { Tenant } from '@/lib/auth/tenant';
+import { deleteOpeningPhotos, uploadOpeningPhoto } from '@/lib/backend/photoStorage';
+import { isSupabaseConfigured } from '@/lib/backend/supabaseClient';
 import { formatDate, textOrNotSpecified } from '@/lib/measurements/format';
 import { useMeasurements } from '@/lib/measurements/MeasurementsContext';
-import type { Measurement, MeasurementDetails } from '@/lib/measurements/types';
+import { blobToDataUrl, type PickedPhoto } from '@/lib/measurements/photo';
+import type { Measurement, MeasurementDetails, OpeningInput } from '@/lib/measurements/types';
 
 type Editing = { kind: 'details' } | { kind: 'opening'; openingId: string } | { kind: 'new-opening' } | null;
 
@@ -26,9 +31,73 @@ export default function HistoryScreen() {
     deleteMeasurement,
     setStatus,
   } = useMeasurements();
+  const { user } = useAuth();
+  const tenant: Tenant | null = user ? { userId: user.id, companyId: user.companyId } : null;
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
+
+  // Порядок важен: путь фото содержит id проёма, поэтому сначала addOpening без фото,
+  // затем upload в Storage, затем updateOpening с путём
+  async function saveNewOpening(measurementId: string, opening: OpeningInput, photo: PickedPhoto | null) {
+    const openingId = await addOpening(measurementId, { ...opening, photoDataUrl: null });
+    if (!openingId) return;
+    if (photo) {
+      if (tenant && isSupabaseConfigured) {
+        try {
+          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, photo.blob);
+          await updateOpening(openingId, { ...opening, photoDataUrl: path });
+        } catch (error) {
+          console.error('Не удалось загрузить фото проема', error);
+        }
+      } else {
+        // Mock-режим (web без env): храним data URL в localStorage
+        const dataUrl = await blobToDataUrl(photo.blob);
+        await updateOpening(openingId, { ...opening, photoDataUrl: dataUrl });
+      }
+    }
+    setEditing(null);
+  }
+
+  async function saveOpeningChanges(
+    measurementId: string,
+    openingId: string,
+    opening: OpeningInput,
+    photo: PickedPhoto | null
+  ) {
+    if (photo) {
+      if (tenant && isSupabaseConfigured) {
+        try {
+          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, photo.blob);
+          const saved = await updateOpening(openingId, { ...opening, photoDataUrl: path });
+          if (saved) setEditing(null);
+        } catch (error) {
+          console.error('Не удалось загрузить фото проема', error);
+        }
+        return;
+      }
+      // Mock-режим: новое фото как data URL
+      const dataUrl = await blobToDataUrl(photo.blob);
+      const savedWithPhoto = await updateOpening(openingId, { ...opening, photoDataUrl: dataUrl });
+      if (savedWithPhoto) setEditing(null);
+      return;
+    }
+    const saved = await updateOpening(openingId, opening);
+    if (saved) setEditing(null);
+  }
+
+  async function removeOpening(openingId: string) {
+    const opening = selected?.openings.find((item) => item.id === openingId);
+    const deleted = await deleteOpening(openingId);
+    if (deleted) await deleteOpeningPhotos([opening?.photoDataUrl]);
+  }
+
+  async function removeMeasurement(measurementId: string) {
+    const measurement = measurements.find((item) => item.id === measurementId);
+    const deleted = await deleteMeasurement(measurementId);
+    if (deleted) await deleteOpeningPhotos(measurement?.openings.map((opening) => opening.photoDataUrl) ?? []);
+    return deleted;
+  }
 
   const selected = measurements.find((measurement) => measurement.id === selectedId) ?? null;
   const banner = syncError ? <Text style={styles.banner}>{syncError}</Text> : null;
@@ -81,10 +150,7 @@ export default function HistoryScreen() {
         <OpeningWizard
           key={editingOpening.id}
           initial={editingOpening}
-          onComplete={async (opening) => {
-            const saved = await updateOpening(editingOpening.id, opening);
-            if (saved) setEditing(null);
-          }}
+          onComplete={(opening, photo) => void saveOpeningChanges(selected.id, editingOpening.id, opening, photo)}
           onCancel={() => setEditing(null)}
         />
         {banner}
@@ -96,10 +162,7 @@ export default function HistoryScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <OpeningWizard
-          onComplete={async (opening) => {
-            const saved = await addOpening(selected.id, opening);
-            if (saved) setEditing(null);
-          }}
+          onComplete={(opening, photo) => void saveNewOpening(selected.id, opening, photo)}
           onCancel={() => setEditing(null)}
         />
         {banner}
@@ -116,11 +179,10 @@ export default function HistoryScreen() {
           onEditDetails={() => setEditing({ kind: 'details' })}
           onEditOpening={(openingId) => setEditing({ kind: 'opening', openingId })}
           onAddOpening={() => setEditing({ kind: 'new-opening' })}
-          onDeleteOpening={deleteOpening}
-          onDelete={async () => {
-            const deleted = await deleteMeasurement(selected.id);
+          onDeleteOpening={(openingId) => void removeOpening(openingId)}
+          onDelete={() => void removeMeasurement(selected.id).then((deleted) => {
             if (deleted) setSelectedId(null);
-          }}
+          })}
           onSetStatus={(status) => setStatus(selected.id, status)}
         />
         {banner}

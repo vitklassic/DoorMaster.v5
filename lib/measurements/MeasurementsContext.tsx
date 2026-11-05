@@ -14,7 +14,7 @@ type MeasurementsContextValue = {
   syncError: string | null;
   createMeasurement: (input: MeasurementDetails) => Promise<string | null>;
   updateMeasurement: (measurementId: string, input: MeasurementDetails) => Promise<boolean>;
-  addOpening: (measurementId: string, opening: OpeningInput) => Promise<boolean>;
+  addOpening: (measurementId: string, opening: OpeningInput) => Promise<string | null>;
   updateOpening: (openingId: string, opening: OpeningInput) => Promise<boolean>;
   deleteOpening: (openingId: string) => Promise<boolean>;
   deleteMeasurement: (measurementId: string) => Promise<boolean>;
@@ -98,15 +98,15 @@ export function MeasurementsProvider({ children }: { children: ReactNode }) {
 
   const addOpening = useCallback(
     async (measurementId: string, opening: OpeningInput) => {
-      if (!tenant) return false;
+      if (!tenant) return null;
       const created = await runAction(() => measurementsApi.addOpening(tenant, measurementId, opening));
-      if (!created) return false;
+      if (!created) return null;
       setMeasurements((prev) =>
         prev.map((item) =>
           item.id === measurementId ? { ...item, openings: [...item.openings, created] } : item
         )
       );
-      return true;
+      return created.id;
     },
     [tenant, runAction]
   );

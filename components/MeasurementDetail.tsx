@@ -5,9 +5,9 @@ import { AppButton } from '@/components/AppButton';
 import { OpeningSchema } from '@/components/OpeningSchema';
 import { StatusBadge } from '@/components/StatusBadge';
 import { colors, radius, spacing } from '@/constants/theme';
+import { usePhotoUrl } from '@/lib/backend/photoStorage';
 import { formatDate, getRoomLabels, getSideLabel, millimetersOrNotSpecified, textOrNotSpecified } from '@/lib/measurements/format';
-import { openPrintReport } from '@/lib/measurements/report';
-import { savePdfToFiles, sharePdf } from '@/lib/measurements/pdfExport';
+import { shareReport } from '@/lib/measurements/shareReport';
 import { getAllowedTransitions, getTransitionLabel } from '@/lib/measurements/statusTransitions';
 import type { Measurement, MeasurementStatus, Opening } from '@/lib/measurements/types';
 
@@ -39,33 +39,18 @@ export function MeasurementDetail({
   // Редактирование доступно только в работе: done/archived закрыты для правок
   const editable = measurement.status === 'draft' || measurement.status === 'active';
 
-  async function handleSend() {
+  async function handleShare() {
     setExportMessage(null);
     try {
-      await sharePdf(measurement);
+      await shareReport(measurement);
     } catch {
-      setExportMessage({ kind: 'error', text: 'Не удалось подготовить PDF для отправки. Попробуйте еще раз.' });
-    }
-  }
-
-  async function handleSave() {
-    setExportMessage(null);
-    try {
-      const result = await savePdfToFiles(measurement);
-      if (result === 'saved') {
-        setExportMessage({ kind: 'success', text: 'PDF сохранен в файлы телефона.' });
-      } else {
-        setExportMessage({ kind: 'error', text: 'Доступ к папке не выдан, файл не сохранен.' });
-      }
-    } catch {
-      setExportMessage({ kind: 'error', text: 'Не удалось сохранить PDF. Попробуйте еще раз.' });
-    }
-  }
-
-  function handleWebPdf() {
-    setExportMessage(null);
-    if (!openPrintReport(measurement)) {
-      setExportMessage({ kind: 'error', text: 'Браузер заблокировал окно отчета. Разрешите всплывающие окна и повторите.' });
+      setExportMessage({
+        kind: 'error',
+        text:
+          Platform.OS === 'web'
+            ? 'Браузер заблокировал окно отчета. Разрешите всплывающие окна и повторите.'
+            : 'Не удалось подготовить PDF для отправки. Попробуйте еще раз.',
+      });
     }
   }
 
@@ -105,14 +90,7 @@ export function MeasurementDetail({
       </View>
 
       <View style={styles.actions}>
-        {Platform.OS === 'web' ? (
-          <AppButton label="Сохранить в PDF" onPress={handleWebPdf} />
-        ) : (
-          <>
-            <AppButton label="Отправить PDF" onPress={handleSend} />
-            <AppButton label="Сохранить файл" variant="secondary" onPress={handleSave} />
-          </>
-        )}
+        <AppButton label={Platform.OS === 'web' ? 'Сохранить в PDF' : 'Отправить PDF'} onPress={() => void handleShare()} />
         {editable ? <AppButton label="Редактировать данные объекта" variant="secondary" onPress={onEditDetails} /> : null}
         {exportMessage ? (
           <Text style={exportMessage.kind === 'error' ? styles.errorText : styles.successText}>{exportMessage.text}</Text>
@@ -162,6 +140,8 @@ function OpeningCard({
   onDelete: () => void;
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // photoDataUrl — путь Storage (подписанный URL) или data URL в mock-режиме
+  const photoUrl = usePhotoUrl(opening.photoDataUrl);
   return (
     <View style={styles.openingCard}>
       <View style={styles.openingHeader}>
@@ -181,8 +161,8 @@ function OpeningCard({
         Высота: {millimetersOrNotSpecified(opening.height)} · Ширина: {millimetersOrNotSpecified(opening.width)} · Толщина: {millimetersOrNotSpecified(opening.thickness)}
       </Text>
       <Text style={styles.openingMeta}>Открывание: {getSideLabel(opening.side)}</Text>
-      {opening.photoDataUrl ? (
-        <Image source={{ uri: opening.photoDataUrl }} style={styles.photo} resizeMode="cover" />
+      {photoUrl ? (
+        <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" />
       ) : null}
       <View style={styles.schema}>
         <OpeningSchema side={opening.side} width={200} />

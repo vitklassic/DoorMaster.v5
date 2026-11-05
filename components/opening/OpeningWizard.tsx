@@ -7,6 +7,7 @@ import { OpeningSchema } from '@/components/OpeningSchema';
 import { ChoiceStep, type ChoiceOption } from '@/components/opening/ChoiceStep';
 import { PhotoStep } from '@/components/opening/PhotoStep';
 import { colors, radius, spacing } from '@/constants/theme';
+import type { PickedPhoto } from '@/lib/measurements/photo';
 import { checkDimension } from '@/lib/measurements/validation';
 import {
   DIMENSION_LIMITS,
@@ -42,6 +43,7 @@ type Draft = {
   floor: string;
   room: string;
   photoDataUrl: string | null;
+  photo: PickedPhoto | null;
   height: string;
   width: string;
   thickness: string;
@@ -52,6 +54,7 @@ const EMPTY_DRAFT: Draft = {
   floor: '',
   room: '',
   photoDataUrl: null,
+  photo: null,
   height: '',
   width: '',
   thickness: '',
@@ -63,6 +66,7 @@ function draftFromOpening(opening: Opening): Draft {
     floor: opening.floor ?? '',
     room: opening.room ?? '',
     photoDataUrl: opening.photoDataUrl,
+    photo: null,
     height: opening.height === null ? '' : String(opening.height),
     width: opening.width === null ? '' : String(opening.width),
     thickness: opening.thickness === null ? '' : String(opening.thickness),
@@ -77,7 +81,7 @@ function clearStep(draft: Draft, step: Step): Draft {
     case 'room':
       return { ...draft, room: '' };
     case 'photo':
-      return { ...draft, photoDataUrl: null };
+      return { ...draft, photoDataUrl: null, photo: null };
     case 'height':
     case 'width':
     case 'thickness':
@@ -101,7 +105,7 @@ function toOpeningInput(draft: Draft): OpeningInput {
 
 type Props = {
   initial?: Opening;
-  onComplete: (opening: OpeningInput) => void;
+  onComplete: (opening: OpeningInput, photo: PickedPhoto | null) => void;
   onCancel: () => void;
 };
 
@@ -130,7 +134,7 @@ export function OpeningWizard({ initial, onComplete, onCancel }: Props) {
 
   function commit(next: Draft) {
     if (isLastStep) {
-      onComplete(toOpeningInput(next));
+      onComplete(toOpeningInput(next), next.photo);
       return;
     }
     setDraft(next);
@@ -158,7 +162,7 @@ export function OpeningWizard({ initial, onComplete, onCancel }: Props) {
     ? initial
       ? 'Сохранить изменения'
       : 'Сохранить проем'
-    : step === 'photo' && draft.photoDataUrl === null
+    : step === 'photo' && draft.photoDataUrl === null && draft.photo === null
       ? 'Пропустить'
       : 'Далее';
 
@@ -183,7 +187,14 @@ export function OpeningWizard({ initial, onComplete, onCancel }: Props) {
           />
         );
       case 'photo':
-        return <PhotoStep photoDataUrl={draft.photoDataUrl} onChange={(photoDataUrl) => updateDraft({ photoDataUrl })} />;
+        return (
+          <PhotoStep
+            existingPhoto={draft.photoDataUrl}
+            photo={draft.photo}
+            onChange={(photo) => updateDraft({ photo })}
+            onRemoveExisting={() => updateDraft({ photoDataUrl: null })}
+          />
+        );
       case 'height':
       case 'width':
       case 'thickness': {

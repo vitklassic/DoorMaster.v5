@@ -38,11 +38,12 @@ function formatNotes(notes: string): string {
   return escapeHtml(notes).replace(/\n/g, '<br>');
 }
 
-function renderOpeningHtml(opening: Opening, title: string): string {
-  const photo =
-    opening.photoDataUrl && opening.photoDataUrl.startsWith('data:image/')
-      ? `<img class="photo" src="${opening.photoDataUrl}" alt="" />`
-      : '';
+// photos: openingId → URL изображения (подписанный URL Storage на web, file:// на native,
+// data URL — только mock-режим). Чистая функция без DOM API.
+function renderOpeningHtml(opening: Opening, title: string, photoUrl: string | undefined): string {
+  const photo = photoUrl
+    ? `<img class="photo" src="${escapeHtml(photoUrl)}" alt="" />`
+    : '';
   return `
     <section class="opening">
       <div class="opening-info">
@@ -56,10 +57,10 @@ function renderOpeningHtml(opening: Opening, title: string): string {
     </section>`;
 }
 
-export function buildReportHtml(measurement: Measurement): string {
+export function buildReportHtml(measurement: Measurement, photos: Record<string, string> = {}): string {
   const roomLabels = getRoomLabels(measurement.openings);
   const openings = measurement.openings
-    .map((opening, index) => renderOpeningHtml(opening, `${index + 1}. ${roomLabels[index]}`))
+    .map((opening, index) => renderOpeningHtml(opening, `${index + 1}. ${roomLabels[index]}`, photos[opening.id]))
     .join('');
   const notes = measurement.notes.trim()
     ? `<div class="notes"><h2>Заметки</h2><p>${formatNotes(measurement.notes.trim())}</p></div>`
@@ -104,15 +105,11 @@ export function buildReportHtml(measurement: Measurement): string {
 </html>`;
 }
 
-export function openPrintReport(measurement: Measurement): boolean {
-  const reportWindow = window.open('', '_blank');
-  if (!reportWindow) return false;
-  reportWindow.document.open();
-  reportWindow.document.write(buildReportHtml(measurement));
-  reportWindow.document.close();
-  setTimeout(() => {
-    reportWindow.focus();
-    reportWindow.print();
-  }, 300);
-  return true;
+export function getReportFileName(measurement: Measurement): string {
+  const date = new Date(measurement.createdAt).toLocaleDateString('ru-RU').replace(/\./g, '-');
+  const address = textOrNotSpecified(measurement.address)
+    .replace(/[\\/:*?"<>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return `Замер ${address} ${date}.pdf`;
 }

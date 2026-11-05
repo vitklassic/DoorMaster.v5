@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight, DoorOpen, MapPin } from 'lucide-react-native';
 import { StatusBadge } from '@/components/StatusBadge';
 import { colors, radius, spacing } from '@/constants/theme';
+import { usePhotoUrl } from '@/lib/backend/photoStorage';
 import { formatDate, textOrNotSpecified } from '@/lib/measurements/format';
 import type { FeedItem } from '@/lib/measurements/feed';
 
@@ -13,6 +14,8 @@ type Props = {
 export function FeedCard({ item, onPress }: Props) {
   const { measurement } = item;
   const openingCount = measurement.openings.length;
+  const firstPhotoPath = measurement.openings.find((opening) => opening.photoDataUrl)?.photoDataUrl ?? null;
+  const photoUrl = usePhotoUrl(firstPhotoPath);
 
   return (
     <Pressable
@@ -47,6 +50,8 @@ export function FeedCard({ item, onPress }: Props) {
         </View>
       </View>
 
+      {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.thumbnail} resizeMode="cover" /> : null}
+
       <ChevronRight size={20} color={colors.textMuted} strokeWidth={2} />
     </Pressable>
   );
@@ -66,6 +71,12 @@ const styles = StyleSheet.create({
   cardPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.99 }],
+  },
+  thumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.md,
+    backgroundColor: colors.borderSoft,
   },
   details: {
     flex: 1,

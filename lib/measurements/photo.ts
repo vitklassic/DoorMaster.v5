@@ -1,44 +1,36 @@
-function compressImage(file: Blob, maxSide = 1024): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(image.width * scale);
-      canvas.height = Math.round(image.height * scale);
-      const context = canvas.getContext('2d');
-      URL.revokeObjectURL(url);
-      if (!context) {
-        reject(new Error('Canvas is not available'));
-        return;
-      }
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.8));
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Image could not be read'));
-    };
-    image.src = url;
-  });
+import { Platform } from 'react-native';
+
+export type PhotoSource = 'camera' | 'library';
+
+// blob — сжатое jpeg-фото для загрузки в Storage;
+// previewUrl — uri для мгновенного превью (object URL на web, asset.uri на native)
+export type PickedPhoto = {
+  blob: Blob;
+  previewUrl: string;
+};
+
+type PhotoModule = {
+  pickPhoto: (source: PhotoSource) => Promise<PickedPhoto | null>;
+  revokePreview: (url: string | null) => void;
+  // Только mock-режим (web без env): blob → data URL для хранения в localStorage
+  blobToDataUrl: (blob: Blob) => Promise<string>;
+};
+
+// Диспетчер платформенных реализаций: на web Metro резолвит сразу photo.web.ts,
+// на native — этот файл, который подгружает нужную реализацию.
+function loadModule(): Promise<PhotoModule> {
+  return Platform.OS === 'web' ? import('./photo.web') : import('./photo.native');
 }
 
-export function pickPhoto(): Promise<string | null> {
-  return new Promise((resolve, reject) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) {
-        resolve(null);
-        return;
-      }
-      compressImage(file).then(resolve, reject);
-    };
-    input.oncancel = () => resolve(null);
-    input.click();
-  });
+export async function pickPhoto(source: PhotoSource): Promise<PickedPhoto | null> {
+  return (await loadModule()).pickPhoto(source);
+}
+
+export function revokePreview(url: string | null): void {
+  if (!url) return;
+  void loadModule().then((module) => module.revokePreview(url));
+}
+
+export async function blobToDataUrl(blob: Blob): Promise<string> {
+  return (await loadModule()).blobToDataUrl(blob);
 }

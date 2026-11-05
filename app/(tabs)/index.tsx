@@ -8,8 +8,12 @@ import { OpeningWizard } from '@/components/opening/OpeningWizard';
 import { AppButton } from '@/components/AppButton';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/AuthContext';
+import type { Tenant } from '@/lib/auth/tenant';
+import { uploadOpeningPhoto } from '@/lib/backend/photoStorage';
+import { isSupabaseConfigured } from '@/lib/backend/supabaseClient';
 import { useMeasurements } from '@/lib/measurements/MeasurementsContext';
 import { textOrNotSpecified } from '@/lib/measurements/format';
+import { blobToDataUrl, type PickedPhoto } from '@/lib/measurements/photo';
 import type { MeasurementDetails, OpeningInput } from '@/lib/measurements/types';
 
 type Stage =
@@ -19,8 +23,9 @@ type Stage =
   | { kind: 'finish'; measurementId: string };
 
 export default function NewMeasurementScreen() {
-  const { measurements, syncError, createMeasurement, addOpening } = useMeasurements();
+  const { measurements, syncError, createMeasurement, addOpening, updateOpening } = useMeasurements();
   const { user, signOut } = useAuth();
+  const tenant: Tenant | null = user ? { userId: user.id, companyId: user.companyId } : null;
   const [stage, setStage] = useState<Stage>({ kind: 'home' });
   const [accountError, setAccountError] = useState<string | null>(null);
 
@@ -32,9 +37,26 @@ export default function NewMeasurementScreen() {
     if (measurementId) setStage({ kind: 'opening', measurementId, key: Date.now() });
   }
 
-  async function handleOpeningComplete(measurementId: string, opening: OpeningInput) {
-    const saved = await addOpening(measurementId, opening);
-    if (saved) setStage({ kind: 'finish', measurementId });
+  // Порядок важен: путь фото содержит id проёма, поэтому сначала addOpening без фото,
+  // затем upload в Storage, затем updateOpening с путём
+  async function handleOpeningComplete(measurementId: string, opening: OpeningInput, photo: PickedPhoto | null) {
+    const openingId = await addOpening(measurementId, { ...opening, photoDataUrl: null });
+    if (!openingId) return;
+    if (photo) {
+      if (tenant && isSupabaseConfigured) {
+        try {
+          const path = await uploadOpeningPhoto(tenant, measurementId, openingId, photo.blob);
+          await updateOpening(openingId, { ...opening, photoDataUrl: path });
+        } catch (error) {
+          console.error('Не удалось загрузить фото проема', error);
+        }
+      } else {
+        // Mock-режим (web без env): храним data URL в localStorage
+        const dataUrl = await blobToDataUrl(photo.blob);
+        await updateOpening(openingId, { ...opening, photoDataUrl: dataUrl });
+      }
+    }
+    setStage({ kind: 'finish', measurementId });
   }
 
   async function handleSignOut() {
@@ -91,7 +113,7 @@ export default function NewMeasurementScreen() {
       {stage.kind === 'opening' ? (
         <OpeningWizard
           key={stage.key}
-          onComplete={(opening) => handleOpeningComplete(stage.measurementId, opening)}
+          onComplete={(opening, photo) => void handleOpeningComplete(stage.measurementId, opening, photo)}
           onCancel={() => setStage({ kind: 'home' })}
         />
       ) : null}

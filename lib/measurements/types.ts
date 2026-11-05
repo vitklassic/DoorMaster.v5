@@ -35,6 +35,9 @@ export type Opening = {
   id: string;
   floor: string | null;
   room: string | null;
+  // Путь объекта в Supabase Storage вида {company_id}/{measurement_id}/{opening_id}.jpg.
+  // data URL (base64) встречается только в web mock-режиме (приложение без env).
+  // Имя поля историческое — это НЕ обязательно data URL.
   photoDataUrl: string | null;
   height: number | null;
   width: number | null;

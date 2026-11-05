@@ -18,6 +18,7 @@ import { colors, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { ROLE_LABELS } from '@/lib/auth/roles';
 import type { Tenant } from '@/lib/auth/tenant';
+import { deleteOpeningPhotos } from '@/lib/backend/photoStorage';
 import { listCompanyInstallers, subscribeToCompanyInstallers, type CompanyInstaller } from '@/lib/backend/profilesApi';
 import { buildFeedItems, filterFeedItems } from '@/lib/measurements/feed';
 import { useMeasurements } from '@/lib/measurements/MeasurementsContext';
@@ -127,10 +128,17 @@ function ManagerWorkspace({ userId, companyId, email, onSignOut }: WorkspaceProp
           onEditDetails={() => {}}
           onEditOpening={() => {}}
           onAddOpening={() => {}}
-          onDeleteOpening={deleteOpening}
+          onDeleteOpening={async (openingId) => {
+            const opening = selected.openings.find((item) => item.id === openingId);
+            const deleted = await deleteOpening(openingId);
+            if (deleted) await deleteOpeningPhotos([opening?.photoDataUrl]);
+          }}
           onDelete={async () => {
             const deleted = await deleteMeasurement(selected.id);
-            if (deleted) setSelectedId(null);
+            if (deleted) {
+              await deleteOpeningPhotos(selected.openings.map((opening) => opening.photoDataUrl));
+              setSelectedId(null);
+            }
           }}
           onSetStatus={(status) => setStatus(selected.id, status)}
         />
