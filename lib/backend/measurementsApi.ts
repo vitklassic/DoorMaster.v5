@@ -1,10 +1,12 @@
 import type { Tenant } from '@/lib/auth/tenant';
-import type {
-  Measurement,
-  MeasurementDetails,
-  Opening,
-  OpeningInput,
-  OpeningSide,
+import {
+  MEASUREMENT_STATUSES,
+  type Measurement,
+  type MeasurementDetails,
+  type MeasurementStatus,
+  type Opening,
+  type OpeningInput,
+  type OpeningSide,
 } from '@/lib/measurements/types';
 import * as mock from './mockBackend';
 import { supabase } from './supabaseClient';
@@ -30,6 +32,7 @@ type MeasurementRow = {
   entrance: string | null;
   apartment: string | null;
   notes: string | null;
+  status: string;
   created_at: string;
   openings: OpeningRow[];
 };
@@ -61,6 +64,12 @@ function toOpening(row: OpeningRow): Opening {
   };
 }
 
+function toMeasurementStatus(value: string | null | undefined): MeasurementStatus {
+  return (MEASUREMENT_STATUSES as readonly string[]).includes(value ?? '')
+    ? (value as MeasurementStatus)
+    : 'draft';
+}
+
 function toMeasurement(row: MeasurementRow): Measurement {
   return {
     id: row.id,
@@ -72,6 +81,7 @@ function toMeasurement(row: MeasurementRow): Measurement {
     apartment: row.apartment ?? '',
     notes: row.notes ?? '',
     createdAt: row.created_at,
+    status: toMeasurementStatus(row.status),
     openings: [...row.openings].sort((a, b) => a.created_at.localeCompare(b.created_at)).map(toOpening),
   };
 }
@@ -145,6 +155,19 @@ export async function deleteMeasurement(tenant: Tenant, measurementId: string): 
     .delete()
     .eq('id', measurementId)
     .eq('company_id', tenant.companyId);
+  assertNoError(error);
+}
+
+export async function setMeasurementStatus(
+  tenant: Tenant,
+  measurementId: string,
+  status: MeasurementStatus
+): Promise<void> {
+  if (!supabase) return mock.mockSetMeasurementStatus(tenant, measurementId, status);
+  const { error } = await supabase.rpc('set_measurement_status', {
+    p_measurement_id: measurementId,
+    p_status: status,
+  });
   assertNoError(error);
 }
 

@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight, DoorOpen, MapPin } from 'lucide-react-native';
+import { StatusBadge } from '@/components/StatusBadge';
 import { colors, radius, spacing } from '@/constants/theme';
 import { formatDate, textOrNotSpecified } from '@/lib/measurements/format';
 import type { FeedItem } from '@/lib/measurements/feed';
@@ -37,9 +38,12 @@ export function FeedCard({ item, onPress }: Props) {
           {textOrNotSpecified(measurement.clientName)}
         </Text>
 
-        <View style={styles.openingBadge}>
-          <DoorOpen size={13} color={colors.primary} strokeWidth={2} />
-          <Text style={styles.openingCount}>Проемов: {openingCount}</Text>
+        <View style={styles.badgesRow}>
+          <View style={styles.openingBadge}>
+            <DoorOpen size={13} color={colors.primary} strokeWidth={2} />
+            <Text style={styles.openingCount}>Проемов: {openingCount}</Text>
+          </View>
+          <StatusBadge status={measurement.status} />
         </View>
       </View>
 
@@ -100,11 +104,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
   },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 2,
+  },
   openingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 2,
     alignSelf: 'flex-start',
     paddingHorizontal: spacing.xs,
     paddingVertical: 3,

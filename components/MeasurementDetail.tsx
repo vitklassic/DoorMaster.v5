@@ -3,11 +3,13 @@ import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from '
 import { ArrowLeft, Trash2 } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
 import { OpeningSchema } from '@/components/OpeningSchema';
+import { StatusBadge } from '@/components/StatusBadge';
 import { colors, radius, spacing } from '@/constants/theme';
 import { formatDate, getRoomLabels, getSideLabel, millimetersOrNotSpecified, textOrNotSpecified } from '@/lib/measurements/format';
 import { openPrintReport } from '@/lib/measurements/report';
 import { savePdfToFiles, sharePdf } from '@/lib/measurements/pdfExport';
-import type { Measurement, Opening } from '@/lib/measurements/types';
+import { getAllowedTransitions, getTransitionLabel } from '@/lib/measurements/statusTransitions';
+import type { Measurement, MeasurementStatus, Opening } from '@/lib/measurements/types';
 
 type Props = {
   measurement: Measurement;
@@ -17,6 +19,7 @@ type Props = {
   onAddOpening: () => void;
   onDeleteOpening: (openingId: string) => void;
   onDelete: () => void;
+  onSetStatus?: (status: MeasurementStatus) => Promise<boolean>;
 };
 
 export function MeasurementDetail({
@@ -27,10 +30,14 @@ export function MeasurementDetail({
   onAddOpening,
   onDeleteOpening,
   onDelete,
+  onSetStatus,
 }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [exportMessage, setExportMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const roomLabels = getRoomLabels(measurement.openings);
+  const allowedTransitions = getAllowedTransitions(measurement.status);
+  // Редактирование доступно только в работе: done/archived закрыты для правок
+  const editable = measurement.status === 'draft' || measurement.status === 'active';
 
   async function handleSend() {
     setExportMessage(null);
@@ -80,6 +87,23 @@ export function MeasurementDetail({
         {measurement.notes.trim() ? <Text style={styles.notes}>Заметки: {measurement.notes.trim()}</Text> : null}
       </View>
 
+      <View style={styles.statusBlock}>
+        <Text style={styles.sectionTitle}>Статус</Text>
+        <StatusBadge status={measurement.status} />
+        {onSetStatus && allowedTransitions.length > 0 ? (
+          <View style={styles.statusActions}>
+            {allowedTransitions.map((status) => (
+              <AppButton
+                key={status}
+                label={getTransitionLabel(measurement.status, status)}
+                variant="secondary"
+                onPress={() => void onSetStatus(status)}
+              />
+            ))}
+          </View>
+        ) : null}
+      </View>
+
       <View style={styles.actions}>
         {Platform.OS === 'web' ? (
           <AppButton label="Сохранить в PDF" onPress={handleWebPdf} />
@@ -89,7 +113,7 @@ export function MeasurementDetail({
             <AppButton label="Сохранить файл" variant="secondary" onPress={handleSave} />
           </>
         )}
-        <AppButton label="Редактировать данные объекта" variant="secondary" onPress={onEditDetails} />
+        {editable ? <AppButton label="Редактировать данные объекта" variant="secondary" onPress={onEditDetails} /> : null}
         {exportMessage ? (
           <Text style={exportMessage.kind === 'error' ? styles.errorText : styles.successText}>{exportMessage.text}</Text>
         ) : null}
@@ -102,11 +126,12 @@ export function MeasurementDetail({
           key={opening.id}
           opening={opening}
           roomLabel={roomLabels[index]}
+          editable={editable}
           onEdit={() => onEditOpening(opening.id)}
           onDelete={() => onDeleteOpening(opening.id)}
         />
       ))}
-      <AppButton label="Добавить проем" onPress={onAddOpening} />
+      {editable ? <AppButton label="Добавить проем" onPress={onAddOpening} /> : null}
 
       <View style={styles.deleteBlock}>
         {confirmingDelete ? (
@@ -126,11 +151,13 @@ export function MeasurementDetail({
 function OpeningCard({
   opening,
   roomLabel,
+  editable,
   onEdit,
   onDelete,
 }: {
   opening: Opening;
   roomLabel: string;
+  editable: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -139,13 +166,15 @@ function OpeningCard({
     <View style={styles.openingCard}>
       <View style={styles.openingHeader}>
         <Text style={styles.openingTitle}>{roomLabel}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Удалить проем"
-          onPress={() => setConfirmingDelete(true)}
-          style={styles.trashButton}>
-          <Trash2 size={18} color={colors.error} strokeWidth={2} />
-        </Pressable>
+        {editable ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Удалить проем"
+            onPress={() => setConfirmingDelete(true)}
+            style={styles.trashButton}>
+            <Trash2 size={18} color={colors.error} strokeWidth={2} />
+          </Pressable>
+        ) : null}
       </View>
       <Text style={styles.openingMeta}>Этаж: {textOrNotSpecified(opening.floor)}</Text>
       <Text style={styles.openingMeta}>
@@ -158,15 +187,17 @@ function OpeningCard({
       <View style={styles.schema}>
         <OpeningSchema side={opening.side} width={200} />
       </View>
-      {confirmingDelete ? (
-        <View style={styles.deleteBlock}>
-          <Text style={styles.confirmText}>Удалить этот проем? Это действие нельзя отменить.</Text>
-          <AppButton label="Да, удалить проем" variant="danger" onPress={onDelete} />
-          <AppButton label="Не удалять" variant="secondary" onPress={() => setConfirmingDelete(false)} />
-        </View>
-      ) : (
-        <AppButton label="Изменить проем" variant="secondary" onPress={onEdit} />
-      )}
+      {editable ? (
+        confirmingDelete ? (
+          <View style={styles.deleteBlock}>
+            <Text style={styles.confirmText}>Удалить этот проем? Это действие нельзя отменить.</Text>
+            <AppButton label="Да, удалить проем" variant="danger" onPress={onDelete} />
+            <AppButton label="Не удалять" variant="secondary" onPress={() => setConfirmingDelete(false)} />
+          </View>
+        ) : (
+          <AppButton label="Изменить проем" variant="secondary" onPress={onEdit} />
+        )
+      ) : null}
     </View>
   );
 }
@@ -214,6 +245,18 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: spacing.xs,
+  },
+  statusBlock: {
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  statusActions: {
+    gap: spacing.xs,
+    marginTop: 2,
   },
   errorText: {
     fontSize: 9,

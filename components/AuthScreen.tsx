@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { DoorOpen } from 'lucide-react-native';
+import { DoorOpen, MailOpen } from 'lucide-react-native';
 import { AppButton } from '@/components/AppButton';
 import { FormField } from '@/components/FormField';
 import { colors, radius, spacing } from '@/constants/theme';
@@ -28,7 +28,7 @@ const SUBTITLES: Record<Mode, string> = {
 };
 
 export function AuthScreen() {
-  const { signIn, signUp, requestPasswordReset } = useAuth();
+  const { signIn, signUp, requestPasswordReset, awaitingConfirmation, clearAwaitingConfirmation } = useAuth();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -100,6 +100,23 @@ export function AuthScreen() {
       : mode === 'signup'
         ? 'Зарегистрироваться'
         : 'Войти';
+
+  if (awaitingConfirmation) {
+    return (
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.card}>
+          <View style={styles.logo}>
+            <MailOpen size={28} color={colors.primary} strokeWidth={2} />
+          </View>
+          <Text style={styles.title}>Проверьте почту</Text>
+          <Text style={styles.confirmText}>
+            Мы отправили письмо на {awaitingConfirmation}. Перейдите по ссылке в письме, затем войдите в аккаунт.
+          </Text>
+          <AppButton label="Назад ко входу" variant="secondary" onPress={clearAwaitingConfirmation} />
+        </View>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -243,6 +260,12 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
     borderRadius: radius.sm,
     backgroundColor: colors.successSoft,
+    marginBottom: spacing.sm,
+  },
+  confirmText: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   error: {

@@ -2,9 +2,14 @@ import type { UserRole } from '@/lib/auth/roles';
 import { isInviteCodeValid } from './inviteApi';
 import * as mock from './mockBackend';
 import { INVALID_INVITE_MESSAGE } from './mockBackend';
-import { supabase } from './supabaseClient';
+import { authRedirectTo, supabase } from './supabaseClient';
 
 export type AuthUser = { id: string; email: string; role: UserRole; companyId: string };
+
+// Результат регистрации: либо сразу вошли, либо требуется подтверждение email
+export type SignUpResult =
+  | { kind: 'signed_in'; user: AuthUser }
+  | { kind: 'confirmation_required'; email: string };
 
 const GENERIC_AUTH_ERROR = 'Не удалось выполнить действие. Проверьте соединение и попробуйте еще раз';
 
@@ -83,8 +88,9 @@ export async function signUp(
   password: string,
   companyName: string,
   inviteCode: string
-): Promise<AuthUser> {
-  if (!supabase) return mock.mockSignUp(email, password, inviteCode || undefined);
+): Promise<SignUpResult> {
+  // Mock-режим всегда логинит сразу — без изменений
+  if (!supabase) return { kind: 'signed_in', user: await mock.mockSignUp(email, password, inviteCode || undefined) };
   if (inviteCode && !(await isInviteCodeValid(inviteCode))) throw new Error(INVALID_INVITE_MESSAGE);
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -94,10 +100,10 @@ export async function signUp(
     },
   });
   if (error) throw new Error(translateAuthError(error.message));
-  if (!data.user || !data.session) {
-    throw new Error('Аккаунт создан, но вход не выполнен. Попробуйте войти');
-  }
-  return withRole(data.user);
+  // Включённое подтверждение email: пользователь создан, но сессии нет
+  if (data.user && !data.session) return { kind: 'confirmation_required', email };
+  if (!data.user) throw new Error(GENERIC_AUTH_ERROR);
+  return { kind: 'signed_in', user: await withRole(data.user) };
 }
 
 export async function signOut(): Promise<void> {
@@ -108,7 +114,7 @@ export async function signOut(): Promise<void> {
 
 export async function requestPasswordReset(email: string): Promise<void> {
   if (!supabase) return mock.mockRequestPasswordReset(email);
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: authRedirectTo });
   if (error) throw new Error(GENERIC_AUTH_ERROR);
 }
 

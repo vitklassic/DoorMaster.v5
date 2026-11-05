@@ -1,6 +1,7 @@
 import type { UserRole } from '@/lib/auth/roles';
 import type { Tenant } from '@/lib/auth/tenant';
-import type { Measurement, MeasurementDetails, Opening, OpeningInput } from '@/lib/measurements/types';
+import { canTransition } from '@/lib/measurements/statusTransitions';
+import type { Measurement, MeasurementDetails, MeasurementStatus, Opening, OpeningInput } from '@/lib/measurements/types';
 
 const STORAGE_KEY = 'door-mock-backend-v1';
 
@@ -134,7 +135,7 @@ export async function mockSignOut(): Promise<void> {
 export async function mockListMeasurements(tenant: Tenant): Promise<Measurement[]> {
   return readState()
     .measurements.filter((item) => item.companyId === tenant.companyId)
-    .map((item) => item.measurement)
+    .map((item) => ({ ...item.measurement, status: item.measurement.status ?? 'draft' }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -168,6 +169,7 @@ export async function mockCreateMeasurement(tenant: Tenant, details: Measurement
     ...details,
     id: createId(),
     createdAt: new Date().toISOString(),
+    status: 'draft',
     openings: [],
   };
   writeState({
@@ -192,6 +194,19 @@ export async function mockDeleteMeasurement(tenant: Tenant, measurementId: strin
   const state = readState();
   const record = findRecord(state, tenant, measurementId);
   writeState({ ...state, measurements: state.measurements.filter((item) => item !== record) });
+}
+
+export async function mockSetMeasurementStatus(
+  tenant: Tenant,
+  measurementId: string,
+  status: MeasurementStatus
+): Promise<void> {
+  const state = readState();
+  const record = findRecord(state, tenant, measurementId);
+  const current = record.measurement.status ?? 'draft';
+  if (!canTransition(current, status)) throw new Error('Недопустимый переход статуса');
+  const next = { ...record, measurement: { ...record.measurement, status } };
+  writeState({ ...state, measurements: replaceRecord(state, record, next) });
 }
 
 export async function mockAddOpening(

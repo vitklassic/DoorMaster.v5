@@ -3,7 +3,7 @@ import * as measurementsApi from '@/lib/backend/measurementsApi';
 import { subscribeToCompanyMeasurements } from '@/lib/backend/measurementsRealtime';
 import { useAuth } from '@/lib/auth/AuthContext';
 import type { Tenant } from '@/lib/auth/tenant';
-import type { Measurement, MeasurementDetails, OpeningInput } from './types';
+import type { Measurement, MeasurementDetails, MeasurementStatus, OpeningInput } from './types';
 
 const SYNC_ERROR_MESSAGE = 'Не удалось сохранить изменения. Проверьте соединение и попробуйте еще раз';
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить замеры. Обновите страницу';
@@ -18,6 +18,7 @@ type MeasurementsContextValue = {
   updateOpening: (openingId: string, opening: OpeningInput) => Promise<boolean>;
   deleteOpening: (openingId: string) => Promise<boolean>;
   deleteMeasurement: (measurementId: string) => Promise<boolean>;
+  setStatus: (measurementId: string, status: MeasurementStatus) => Promise<boolean>;
 };
 
 const MeasurementsContext = createContext<MeasurementsContextValue | null>(null);
@@ -160,6 +161,19 @@ export function MeasurementsProvider({ children }: { children: ReactNode }) {
     [tenant, runAction]
   );
 
+  const setStatus = useCallback(
+    async (measurementId: string, status: MeasurementStatus) => {
+      if (!tenant) return false;
+      const result = await runAction(() => measurementsApi.setMeasurementStatus(tenant, measurementId, status));
+      if (result === null) return false;
+      setMeasurements((prev) =>
+        prev.map((item) => (item.id === measurementId ? { ...item, status } : item))
+      );
+      return true;
+    },
+    [tenant, runAction]
+  );
+
   const value = useMemo(
     () => ({
       measurements,
@@ -171,6 +185,7 @@ export function MeasurementsProvider({ children }: { children: ReactNode }) {
       updateOpening,
       deleteOpening,
       deleteMeasurement,
+      setStatus,
     }),
     [
       measurements,
@@ -182,6 +197,7 @@ export function MeasurementsProvider({ children }: { children: ReactNode }) {
       updateOpening,
       deleteOpening,
       deleteMeasurement,
+      setStatus,
     ]
   );
 

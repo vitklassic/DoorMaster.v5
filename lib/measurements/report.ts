@@ -1,6 +1,7 @@
 import { colors } from '@/constants/theme';
 import { SCHEMA_ROLE_COLORS, SCHEMA_VIEW_HEIGHT, SCHEMA_VIEW_WIDTH, getSchemaElements, type SchemaElement } from './schemaGeometry';
 import { formatDate, getRoomLabels, getSideLabel, millimetersOrNotSpecified, textOrNotSpecified } from './format';
+import { STATUS_LABELS } from './statusTransitions';
 import type { Measurement, Opening, OpeningSide } from './types';
 
 function escapeHtml(text: string): string {
@@ -93,6 +94,7 @@ export function buildReportHtml(measurement: Measurement): string {
     <p><strong>Этаж объекта:</strong> ${escapeHtml(textOrNotSpecified(measurement.floor))}</p>
     <p><strong>Подъезд:</strong> ${escapeHtml(textOrNotSpecified(measurement.entrance))}, <strong>квартира:</strong> ${escapeHtml(textOrNotSpecified(measurement.apartment))}</p>
     <p><strong>Дата замера:</strong> ${formatDate(measurement.createdAt)}</p>
+    <p><strong>Статус:</strong> ${escapeHtml(STATUS_LABELS[measurement.status])}</p>
     <p><strong>Проемов:</strong> ${measurement.openings.length}</p>
   </div>
   ${notes}

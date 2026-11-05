@@ -54,8 +54,13 @@ export type MeasurementDetails = {
   notes: string;
 };
 
+export const MEASUREMENT_STATUSES = ['draft', 'active', 'done', 'archived'] as const;
+
+export type MeasurementStatus = (typeof MEASUREMENT_STATUSES)[number];
+
 export type Measurement = MeasurementDetails & {
   id: string;
   createdAt: string;
+  status: MeasurementStatus;
   openings: Opening[];
 };

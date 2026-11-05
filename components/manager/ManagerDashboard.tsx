@@ -21,10 +21,22 @@ import type { Tenant } from '@/lib/auth/tenant';
 import { listCompanyInstallers, subscribeToCompanyInstallers, type CompanyInstaller } from '@/lib/backend/profilesApi';
 import { buildFeedItems, filterFeedItems } from '@/lib/measurements/feed';
 import { useMeasurements } from '@/lib/measurements/MeasurementsContext';
+import type { MeasurementStatus } from '@/lib/measurements/types';
 
 const WIDE_BREAKPOINT = 960;
 const SIDEBAR_WIDTH = 280;
 const INSTALLERS_ERROR_MESSAGE = 'Не удалось загрузить список монтажников';
+
+// «Все» по умолчанию = active + done: черновики в ленту менеджера не попадают,
+// архив показывается отдельным фильтром
+type StatusFilter = 'all' | 'active' | 'done' | 'archived';
+
+const STATUS_FILTERS: { id: StatusFilter; label: string; statuses: MeasurementStatus[] }[] = [
+  { id: 'all', label: 'Все', statuses: ['active', 'done'] },
+  { id: 'active', label: 'Активные', statuses: ['active'] },
+  { id: 'done', label: 'Готовые', statuses: ['done'] },
+  { id: 'archived', label: 'Архив', statuses: ['archived'] },
+];
 
 export function ManagerDashboard() {
   const { user, signOut } = useAuth();
@@ -53,10 +65,11 @@ type WorkspaceProps = {
 function ManagerWorkspace({ userId, companyId, email, onSignOut }: WorkspaceProps) {
   const { width } = useWindowDimensions();
   const isWide = width >= WIDE_BREAKPOINT;
-  const { measurements, loading, syncError, deleteMeasurement, deleteOpening } = useMeasurements();
+  const { measurements, loading, syncError, deleteMeasurement, deleteOpening, setStatus } = useMeasurements();
 
   const tenant = useMemo<Tenant>(() => ({ userId, companyId }), [userId, companyId]);
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [installers, setInstallers] = useState<CompanyInstaller[]>([]);
   const [installersLoading, setInstallersLoading] = useState(true);
@@ -86,7 +99,16 @@ function ManagerWorkspace({ userId, companyId, email, onSignOut }: WorkspaceProp
     };
   }, [tenant]);
 
-  const feedItems = useMemo(() => buildFeedItems(measurements), [measurements]);
+  const activeFilter = STATUS_FILTERS.find((item) => item.id === statusFilter) ?? STATUS_FILTERS[0];
+  const feedItems = useMemo(
+    () =>
+      buildFeedItems(
+        measurements.filter(
+          (measurement) => measurement.status !== 'draft' && activeFilter.statuses.includes(measurement.status)
+        )
+      ),
+    [measurements, activeFilter]
+  );
   const visibleItems = useMemo(() => filterFeedItems(feedItems, query), [feedItems, query]);
 
   const selected = measurements.find((m) => m.id === selectedId) ?? null;
@@ -110,6 +132,7 @@ function ManagerWorkspace({ userId, companyId, email, onSignOut }: WorkspaceProp
             const deleted = await deleteMeasurement(selected.id);
             if (deleted) setSelectedId(null);
           }}
+          onSetStatus={(status) => setStatus(selected.id, status)}
         />
       </ScrollView>
     );
@@ -165,6 +188,23 @@ function ManagerWorkspace({ userId, companyId, email, onSignOut }: WorkspaceProp
               style={styles.searchInput}
               accessibilityLabel="Поиск по названию, адресу или клиенту"
             />
+          </View>
+
+          <View style={styles.filterChips}>
+            {STATUS_FILTERS.map((item) => {
+              const isActive = item.id === statusFilter;
+              return (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  onPress={() => setStatusFilter(item.id)}
+                  style={[styles.filterChip, isActive && styles.filterChipActive]}>
+                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {syncError ? <Text style={styles.error}>{syncError}</Text> : null}
@@ -317,6 +357,31 @@ const styles = StyleSheet.create({
     color: colors.text,
     outlineStyle: 'none',
   } as object,
+  filterChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  filterChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  filterChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  filterChipTextActive: {
+    color: colors.primary,
+  },
   error: {
     fontSize: 11,
     color: colors.error,

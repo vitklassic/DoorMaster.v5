@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight, Search } from 'lucide-react-native';
 import { MeasurementDetail } from '@/components/MeasurementDetail';
 import { ObjectForm } from '@/components/ObjectForm';
+import { StatusBadge } from '@/components/StatusBadge';
 import { OpeningWizard } from '@/components/opening/OpeningWizard';
 import { colors, radius, spacing } from '@/constants/theme';
 import { webInputReset } from '@/constants/inputReset';
@@ -23,6 +24,7 @@ export default function HistoryScreen() {
     addOpening,
     deleteOpening,
     deleteMeasurement,
+    setStatus,
   } = useMeasurements();
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -119,6 +121,7 @@ export default function HistoryScreen() {
             const deleted = await deleteMeasurement(selected.id);
             if (deleted) setSelectedId(null);
           }}
+          onSetStatus={(status) => setStatus(selected.id, status)}
         />
         {banner}
       </SafeAreaView>
@@ -186,9 +189,12 @@ function MeasurementRow({ measurement, onPress }: { measurement: Measurement; on
       <View style={styles.rowText}>
         <Text style={styles.rowAddress}>{textOrNotSpecified(measurement.homeName)}</Text>
         <Text style={styles.rowMeta}>{textOrNotSpecified(measurement.address)}</Text>
-        <Text style={styles.rowMeta}>
-          {formatDate(measurement.createdAt)} · проемов: {measurement.openings.length}
-        </Text>
+        <View style={styles.rowMetaRow}>
+          <Text style={styles.rowMeta}>
+            {formatDate(measurement.createdAt)} · проемов: {measurement.openings.length}
+          </Text>
+          <StatusBadge status={measurement.status} />
+        </View>
       </View>
       <ChevronRight size={22} color={colors.textMuted} strokeWidth={2} />
     </Pressable>
@@ -268,6 +274,12 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontSize: 9,
     color: colors.textSecondary,
+  },
+  rowMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
   },
   empty: {
     alignItems: 'center',

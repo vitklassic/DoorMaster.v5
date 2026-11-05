@@ -16,6 +16,7 @@ import {
   subscribeToAuthChanges,
   updatePassword as authUpdatePassword,
   type AuthUser,
+  type SignUpResult,
 } from '@/lib/backend/authApi';
 import { isSupabaseConfigured } from '@/lib/backend/supabaseClient';
 
@@ -23,26 +24,22 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   recovering: boolean;
+  awaitingConfirmation: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, companyName: string, inviteCode: string) => Promise<void>;
+  signUp: (email: string, password: string, companyName: string, inviteCode: string) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   completePasswordReset: (newPassword: string) => Promise<void>;
+  clearAwaitingConfirmation: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-const FORCE_MANAGER_ROLE = true;
-
-function withDebugRole(next: AuthUser | null): AuthUser | null {
-  if (!next || !FORCE_MANAGER_ROLE) return next;
-  return { ...next, role: 'manager' };
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [recovering, setRecovering] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -50,11 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       if (event === 'SIGNED_OUT') setRecovering(false);
-      setUser(withDebugRole(next));
+      // Вход после подтверждения email по ссылке — сбрасываем экран «Проверьте почту»
+      if (event === 'SIGNED_IN') setAwaitingConfirmation(null);
+      setUser(next);
     });
     getCurrentUser()
       .then((current) => {
-        if (active) setUser(withDebugRole(current));
+        if (active) setUser(current);
       })
       .catch(() => {
         if (active) setUser(null);
@@ -69,16 +68,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    setUser(withDebugRole(await authSignIn(email, password)));
+    setUser(await authSignIn(email, password));
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, companyName: string, inviteCode: string) => {
-    setUser(await authSignUp(email, password, companyName, inviteCode));
-  }, []);
+  const signUp = useCallback(
+    async (email: string, password: string, companyName: string, inviteCode: string): Promise<SignUpResult> => {
+      const result = await authSignUp(email, password, companyName, inviteCode);
+      if (result.kind === 'confirmation_required') {
+        setAwaitingConfirmation(result.email);
+        return result;
+      }
+      setUser(result.user);
+      return result;
+    },
+    []
+  );
+
+  const clearAwaitingConfirmation = useCallback(() => setAwaitingConfirmation(null), []);
 
   const signOut = useCallback(async () => {
     await authSignOut();
     setRecovering(false);
+    setAwaitingConfirmation(null);
     setUser(null);
   }, []);
 
@@ -90,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completePasswordReset = useCallback(async (newPassword: string) => {
     const updated = await authUpdatePassword(newPassword);
     setRecovering(false);
-    setUser(withDebugRole(updated));
+    setUser(updated);
   }, []);
 
   const value = useMemo(
@@ -98,13 +109,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       recovering,
+      awaitingConfirmation,
       signIn,
       signUp,
       signOut,
       requestPasswordReset,
       completePasswordReset,
+      clearAwaitingConfirmation,
     }),
-    [user, loading, recovering, signIn, signUp, signOut, requestPasswordReset, completePasswordReset]
+    [user, loading, recovering, awaitingConfirmation, signIn, signUp, signOut, requestPasswordReset, completePasswordReset, clearAwaitingConfirmation]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
