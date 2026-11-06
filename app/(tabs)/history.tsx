@@ -32,7 +32,7 @@ export default function HistoryScreen() {
     setStatus,
   } = useMeasurements();
   const { user } = useAuth();
-  const tenant: Tenant | null = user ? { userId: user.id, companyId: user.companyId } : null;
+  const tenant: Tenant | null = user ? { userId: user.id, companyId: user.companyId, role: user.role } : null;
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);

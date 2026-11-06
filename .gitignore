@@ -34,3 +34,7 @@ door-master-web.log
 
 # typescript
 *.tsbuildinfo
+
+# Supabase CLI internals
+supabase/.temp/
+supabase/.branches/

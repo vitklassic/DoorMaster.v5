@@ -26,7 +26,7 @@ type Stage =
 export default function NewMeasurementScreen() {
   const { measurements, syncError, createMeasurement, addOpening, updateOpening } = useMeasurements();
   const { user, signOut } = useAuth();
-  const tenant: Tenant | null = user ? { userId: user.id, companyId: user.companyId } : null;
+  const tenant: Tenant | null = user ? { userId: user.id, companyId: user.companyId, role: user.role } : null;
   const [stage, setStage] = useState<Stage>({ kind: 'home' });
   const [accountError, setAccountError] = useState<string | null>(null);
 

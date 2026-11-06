@@ -112,13 +112,15 @@ function openingToRow(opening: OpeningInput) {
 
 export async function listMeasurements(tenant: Tenant): Promise<Measurement[]> {
   if (!supabase) return mock.mockListMeasurements(tenant);
-  const rows = unwrap<MeasurementRow[]>(
-    await supabase
-      .from('measurements')
-      .select(MEASUREMENT_COLUMNS)
-      .eq('company_id', tenant.companyId)
-      .order('created_at', { ascending: false })
-  );
+  let query = supabase
+    .from('measurements')
+    .select(MEASUREMENT_COLUMNS)
+    .eq('company_id', tenant.companyId)
+    .order('created_at', { ascending: false });
+  // C20/T11: installer sees only own measurements, manager — the whole company.
+  // Client filter only limits what the UI receives; the real boundary is RLS.
+  if (tenant.role === 'installer') query = query.eq('user_id', tenant.userId);
+  const rows = unwrap<MeasurementRow[]>(await query);
   return rows.map(toMeasurement);
 }
 

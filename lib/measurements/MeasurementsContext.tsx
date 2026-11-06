@@ -28,9 +28,10 @@ export function MeasurementsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const companyId = user?.companyId ?? null;
+  const role = user?.role ?? null;
   const tenant = useMemo<Tenant | null>(
-    () => (userId && companyId ? { userId, companyId } : null),
-    [userId, companyId]
+    () => (userId && companyId && role ? { userId, companyId, role } : null),
+    [userId, companyId, role]
   );
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [loading, setLoading] = useState(false);

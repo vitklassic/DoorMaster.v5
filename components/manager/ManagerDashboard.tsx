@@ -69,7 +69,7 @@ function ManagerWorkspace({ userId, companyId, email, onSignOut }: WorkspaceProp
   const isWide = width >= WIDE_BREAKPOINT;
   const { measurements, loading, syncError, deleteMeasurement, deleteOpening, setStatus } = useMeasurements();
 
-  const tenant = useMemo<Tenant>(() => ({ userId, companyId }), [userId, companyId]);
+  const tenant = useMemo<Tenant>(() => ({ userId, companyId, role: 'manager' }), [userId, companyId]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
