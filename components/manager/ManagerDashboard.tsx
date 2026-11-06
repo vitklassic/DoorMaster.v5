@@ -16,6 +16,7 @@ import { InviteInstallerCard } from '@/components/manager/InviteInstallerCard';
 import { MeasurementDetail } from '@/components/MeasurementDetail';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { reportError } from '@/lib/diagnostics';
 import { ROLE_LABELS } from '@/lib/auth/roles';
 import type { Tenant } from '@/lib/auth/tenant';
 import { deleteOpeningPhotos } from '@/lib/backend/photoStorage';
@@ -84,7 +85,8 @@ function ManagerWorkspace({ userId, companyId, email, onSignOut }: WorkspaceProp
         .then((list) => {
           if (active) setInstallers(list);
         })
-        .catch(() => {
+        .catch((error) => {
+          reportError(error, 'listCompanyInstallers');
           if (active) setInstallersError(INSTALLERS_ERROR_MESSAGE);
         })
         .finally(() => {

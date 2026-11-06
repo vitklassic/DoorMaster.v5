@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { File, UploadTask, UploadType } from 'expo-file-system';
 import type { Tenant } from '@/lib/auth/tenant';
+import { reportError } from '@/lib/diagnostics';
 import { supabase } from './supabaseClient';
 
 const PHOTO_BUCKET = 'opening-photos';
@@ -117,7 +118,8 @@ export function usePhotoUrl(path: string | null): string | null {
       .then((resolved) => {
         if (active) setUrl(resolved);
       })
-      .catch(() => {
+      .catch((error) => {
+        reportError(error, 'getOpeningPhotoUrl');
         if (active) setUrl(null);
       });
     return () => {

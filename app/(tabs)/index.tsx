@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import type { Tenant } from '@/lib/auth/tenant';
 import { uploadOpeningPhoto } from '@/lib/backend/photoStorage';
 import { isSupabaseConfigured } from '@/lib/backend/supabaseClient';
+import { reportError } from '@/lib/diagnostics';
 import { useMeasurements } from '@/lib/measurements/MeasurementsContext';
 import { textOrNotSpecified } from '@/lib/measurements/format';
 import { blobToDataUrl, type PickedPhoto } from '@/lib/measurements/photo';
@@ -65,7 +66,8 @@ export default function NewMeasurementScreen() {
     setAccountError(null);
     try {
       await signOut();
-    } catch {
+    } catch (error) {
+      reportError(error, 'signOut');
       setAccountError('Не удалось выйти. Попробуйте еще раз');
     }
   }

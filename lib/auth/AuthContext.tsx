@@ -19,6 +19,7 @@ import {
   type SignUpResult,
 } from '@/lib/backend/authApi';
 import { isSupabaseConfigured } from '@/lib/backend/supabaseClient';
+import { reportError } from '@/lib/diagnostics';
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -55,7 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((current) => {
         if (active) setUser(current);
       })
-      .catch(() => {
+      .catch((error) => {
+        reportError(error, 'getCurrentUser');
         if (active) setUser(null);
       })
       .finally(() => {

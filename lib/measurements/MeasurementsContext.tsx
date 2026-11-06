@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as measurementsApi from '@/lib/backend/measurementsApi';
+import { reportError } from '@/lib/diagnostics';
 import { subscribeToCompanyMeasurements } from '@/lib/backend/measurementsRealtime';
 import { useAuth } from '@/lib/auth/AuthContext';
 import type { Tenant } from '@/lib/auth/tenant';
@@ -46,7 +47,8 @@ export function MeasurementsProvider({ children }: { children: ReactNode }) {
         .then((list) => {
           if (active) setMeasurements(list);
         })
-        .catch(() => {
+        .catch((error) => {
+          reportError(error, 'listMeasurements');
           if (active) setSyncError(LOAD_ERROR_MESSAGE);
         });
     setLoading(true);
@@ -66,7 +68,8 @@ export function MeasurementsProvider({ children }: { children: ReactNode }) {
     setSyncError(null);
     try {
       return await action();
-    } catch {
+    } catch (error) {
+      reportError(error, 'measurementsAction');
       setSyncError(SYNC_ERROR_MESSAGE);
       return null;
     }

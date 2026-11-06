@@ -1,4 +1,5 @@
 import type { UserRole } from '@/lib/auth/roles';
+import { userMessage } from '@/lib/diagnostics';
 import { isInviteCodeValid } from './inviteApi';
 import * as mock from './mockBackend';
 import { INVALID_INVITE_MESSAGE } from './mockBackend';
@@ -40,13 +41,17 @@ async function ensureCompanyId(profileId: string): Promise<string> {
     .insert({ name: companyName })
     .select('id')
     .single();
-  if (companyError || !company) throw new Error(GENERIC_AUTH_ERROR);
+  if (companyError || !company) {
+    throw new Error(
+      userMessage(GENERIC_AUTH_ERROR, companyError ?? new Error('company insert returned no row'), 'ensureCompanyId')
+    );
+  }
 
   const { error: updateError } = await supabase
     .from('profiles')
     .update({ company_id: company.id })
     .eq('id', profileId);
-  if (updateError) throw new Error(GENERIC_AUTH_ERROR);
+  if (updateError) throw new Error(userMessage(GENERIC_AUTH_ERROR, updateError, 'ensureCompanyId'));
 
   return company.id;
 }
@@ -58,7 +63,9 @@ async function withRole(user: { id: string; email?: string | null }): Promise<Au
     .select('role, company_id')
     .eq('id', user.id)
     .maybeSingle();
-  if (error || !data) throw new Error(GENERIC_AUTH_ERROR);
+  if (error || !data) {
+    throw new Error(userMessage(GENERIC_AUTH_ERROR, error ?? new Error('profile row missing'), 'loadProfile'));
+  }
   const companyId = data.company_id ?? (await ensureCompanyId(user.id));
   return {
     id: user.id,
@@ -71,14 +78,14 @@ async function withRole(user: { id: string; email?: string | null }): Promise<Au
 export async function getCurrentUser(): Promise<AuthUser | null> {
   if (!supabase) return mock.mockGetUser();
   const { data, error } = await supabase.auth.getSession();
-  if (error) throw new Error(GENERIC_AUTH_ERROR);
+  if (error) throw new Error(userMessage(GENERIC_AUTH_ERROR, error, 'getCurrentUser'));
   return data.session ? withRole(data.session.user) : null;
 }
 
 export async function signIn(email: string, password: string): Promise<AuthUser> {
   if (!supabase) return mock.mockSignIn(email, password);
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw new Error(translateAuthError(error.message));
+  if (error) throw new Error(userMessage(translateAuthError(error.message), error, 'signIn'));
   if (!data.user) throw new Error(GENERIC_AUTH_ERROR);
   return withRole(data.user);
 }
@@ -99,7 +106,7 @@ export async function signUp(
       data: inviteCode ? { invite_code: inviteCode } : { company_name: companyName },
     },
   });
-  if (error) throw new Error(translateAuthError(error.message));
+  if (error) throw new Error(userMessage(translateAuthError(error.message), error, 'signUp'));
   // Включённое подтверждение email: пользователь создан, но сессии нет
   if (data.user && !data.session) return { kind: 'confirmation_required', email };
   if (!data.user) throw new Error(GENERIC_AUTH_ERROR);
@@ -109,19 +116,19 @@ export async function signUp(
 export async function signOut(): Promise<void> {
   if (!supabase) return mock.mockSignOut();
   const { error } = await supabase.auth.signOut();
-  if (error) throw new Error(GENERIC_AUTH_ERROR);
+  if (error) throw new Error(userMessage(GENERIC_AUTH_ERROR, error, 'signOut'));
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
   if (!supabase) return mock.mockRequestPasswordReset(email);
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: authRedirectTo });
-  if (error) throw new Error(GENERIC_AUTH_ERROR);
+  if (error) throw new Error(userMessage(GENERIC_AUTH_ERROR, error, 'requestPasswordReset'));
 }
 
 export async function updatePassword(newPassword: string): Promise<AuthUser> {
   if (!supabase) return mock.mockUpdatePassword(newPassword);
   const { data, error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) throw new Error(translateAuthError(error.message));
+  if (error) throw new Error(userMessage(translateAuthError(error.message), error, 'updatePassword'));
   if (!data.user) throw new Error(GENERIC_AUTH_ERROR);
   return withRole(data.user);
 }
